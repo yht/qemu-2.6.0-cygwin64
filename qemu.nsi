@@ -28,6 +28,12 @@
 !ifndef BINDIR
 !define BINDIR nsis.tmp
 !endif
+!ifndef CONFSUFFIX
+!define CONFSUFFIX ""
+!endif
+!ifndef CONFDIR
+!define CONFDIR "${BINDIR}${CONFSUFFIX}"
+!endif
 !ifndef SRCDIR
 !define SRCDIR .
 !endif
@@ -119,13 +125,13 @@ Section "${PRODUCT} (required)"
     File "${SRCDIR}\README"
     File "${SRCDIR}\VERSION"
 
-    File "${BINDIR}\*.bmp"
-    File "${BINDIR}\*.bin"
-    File "${BINDIR}\*.dtb"
-    File "${BINDIR}\*.rom"
-    File "${BINDIR}\openbios-*"
+    File "${CONFDIR}\*.bmp"
+    File "${CONFDIR}\*.bin"
+    File "${CONFDIR}\*.dtb"
+    File "${CONFDIR}\*.rom"
+    File "${CONFDIR}\openbios-*"
 
-    File /r "${BINDIR}\keymaps"
+    File /r "${CONFDIR}\keymaps"
 !ifdef CONFIG_GTK
     File /r "${BINDIR}\share"
 !endif
@@ -170,11 +176,12 @@ SectionEnd
 !ifdef CONFIG_DOCUMENTATION
 Section "Documentation" SectionDoc
     SetOutPath "$INSTDIR"
-    File "${BINDIR}\qemu-doc.html"
-    File "${BINDIR}\qemu-tech.html"
+    File "${BINDIR}\Doc\qemu-doc.html"
+    File "${BINDIR}\Doc\qemu-tech.html"
+	;; File "${BINDIR}\Doc\*.txt"
     CreateDirectory "$SMPROGRAMS\${PRODUCT}"
-    CreateShortCut "$SMPROGRAMS\${PRODUCT}\User Documentation.lnk" "$INSTDIR\qemu-doc.html" "" "$INSTDIR\qemu-doc.html" 0
-    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Technical Documentation.lnk" "$INSTDIR\qemu-tech.html" "" "$INSTDIR\qemu-tech.html" 0
+    CreateShortCut "$SMPROGRAMS\${PRODUCT}\User Documentation.lnk" "$INSTDIR\Doc\qemu-doc.html" "" "$INSTDIR\Doc\qemu-doc.html" 0
+    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Technical Documentation.lnk" "$INSTDIR\Doc\qemu-tech.html" "" "$INSTDIR\Doc\qemu-tech.html" 0
 SectionEnd
 !endif
 
@@ -208,19 +215,19 @@ Section "Uninstall"
     Delete "$INSTDIR\COPYING.LIB"
     Delete "$INSTDIR\README"
     Delete "$INSTDIR\VERSION"
-    Delete "$INSTDIR\*.bmp"
-    Delete "$INSTDIR\*.bin"
-    Delete "$INSTDIR\*.dll"
-    Delete "$INSTDIR\*.dtb"
-    Delete "$INSTDIR\*.rom"
-    Delete "$INSTDIR\openbios-*"
+    Delete "${CONFDIR}\*.bmp"
+    Delete "${CONFDIR}\*.bin"
+    Delete "${CONFDIR}\*.dll"
+    Delete "${CONFDIR}\*.dtb"
+    Delete "${CONFDIR}\*.rom"
+    Delete "${CONFDIR}\openbios-*"
     Delete "$INSTDIR\qemu-img.exe"
     Delete "$INSTDIR\qemu-io.exe"
     Delete "$INSTDIR\qemu.exe"
     Delete "$INSTDIR\qemu-system-*.exe"
-    Delete "$INSTDIR\qemu-doc.html"
-    Delete "$INSTDIR\qemu-tech.html"
-    RMDir /r "$INSTDIR\keymaps"
+    Delete "$INSTDIR\Doc\qemu-doc.html"
+    Delete "$INSTDIR\Doc\qemu-tech.html"
+    RMDir /r "${CONFDIR}\keymaps"
     RMDir /r "$INSTDIR\share"
     ; Remove generated files
     Delete "$INSTDIR\stderr.txt"

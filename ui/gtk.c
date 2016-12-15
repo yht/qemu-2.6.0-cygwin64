@@ -57,6 +57,12 @@
 #include "sysemu/char.h"
 #include "qom/object.h"
 
+#ifdef _WIN32
+#ifndef MAPVK_VK_TO_VSC
+#define MAPVK_VK_TO_VSC     0
+#endif
+#endif
+
 #define MAX_VCS 10
 #define VC_WINDOW_X_MIN  320
 #define VC_WINDOW_Y_MIN  240
@@ -174,6 +180,11 @@ struct GtkDisplayState {
     bool modifier_pressed[ARRAY_SIZE(modifier_keycode)];
     bool has_evdev;
     bool ignore_keys;
+#if defined(INPUT_NEEDS_ALTGR_FIX)
+    /* win32 alt-gr handling */
+    bool l_ctrl_down;
+    bool r_alt_down;
+#endif
 };
 
 static void gd_grab_pointer(VirtualConsole *vc, const char *reason);
@@ -987,10 +998,26 @@ static int gd_map_keycode(GtkDisplayState *s, GdkDisplay *dpy, int gdk_keycode)
 
 #ifdef GDK_WINDOWING_WIN32
     if (GDK_IS_WIN32_DISPLAY(dpy)) {
+        /*
+           testing for right ctrl and right alt and give corresponding code.
+           for all other keystrokes, scan code is given by MapVirtualKey.
+           (MapVirtualKey maps same code for left and right ctrl and alt keys)
+         */
+        switch (gdk_keycode) {
+        case 0xa3: // r-ctrl
+            qemu_keycode = 0x9d;
+            break;
+        case 0xa5: // r-alt
+            qemu_keycode = 0xb8;
+            break;
+        default:
         qemu_keycode = MapVirtualKey(gdk_keycode, MAPVK_VK_TO_VSC);
+            /* FIXME: is following check still needed? */
         switch (qemu_keycode) {
         case 103:   /* alt gr */
             qemu_keycode = 56 | SCANCODE_GREY;
+            break;
+        }
             break;
         }
         return qemu_keycode;
@@ -1067,6 +1094,30 @@ static gboolean gd_key_event(GtkWidget *widget, GdkEventKey *key, void *opaque)
             s->modifier_pressed[i] = (key->type == GDK_KEY_PRESS);
         }
     }
+
+#if defined(INPUT_NEEDS_ALTGR_FIX)
+    /* Windows maps altgr key to l-ctrl + r-alt.
+       For proper handling in the guest, only r-alt is to be sent.
+       This is done by sending a fake "ctrl up" event when appropriate. */
+    switch (qemu_keycode) {
+    case 0x1d: /* l-ctrl */
+        if (!s->l_ctrl_down && s->r_alt_down) {
+            /* fake ctrl up already sent */
+            return TRUE;
+        }
+        s->l_ctrl_down = (key->type == GDK_KEY_PRESS);
+        break;
+    case 0xb8: /* r-alt */
+        if (s->l_ctrl_down && !s->r_alt_down &&
+                key->type == GDK_KEY_PRESS) {
+            /* sending fake "ctrl up" event */
+            qemu_input_event_send_key_number(vc->gfx.dcl.con, 0x1d, FALSE);
+            s->l_ctrl_down = FALSE;
+        }
+        s->r_alt_down = (key->type == GDK_KEY_PRESS);
+        break;
+    }
+#endif
 
     qemu_input_event_send_key_number(vc->gfx.dcl.con, qemu_keycode,
                                      key->type == GDK_KEY_PRESS);
@@ -2096,9 +2147,18 @@ void gtk_display_init(DisplayState *ds, bool full_screen, bool grab_on_hover)
 
     /* LC_MESSAGES only. See early_gtk_display_init() for details */
     setlocale(LC_MESSAGES, "");
+#ifdef CONFIG_WIN32
+    char *execdirname = qemu_get_exec_dir();
+    char *dirname = g_strdup_printf("%s\\share\\locale",execdirname);
+    bindtextdomain("qemu", dirname);
+    g_free(dirname);
+    g_free(execdirname);
+#else
     bindtextdomain("qemu", CONFIG_QEMU_LOCALEDIR);
+#endif
     textdomain("qemu");
 
+	
     window_display = gtk_widget_get_display(s->window);
     s->null_cursor = gdk_cursor_new_for_display(window_display,
                                                 GDK_BLANK_CURSOR);

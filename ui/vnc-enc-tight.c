@@ -49,6 +49,8 @@
 #include "vnc-enc-tight.h"
 #include "vnc-palette.h"
 
+typedef unsigned int uint;
+
 /* Compression level stuff. The following array contains various
    encoder parameters for each of 10 compression levels (0..9).
    Last three parameters correspond to JPEG quality levels (0..9). */

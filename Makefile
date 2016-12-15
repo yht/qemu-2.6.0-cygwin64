@@ -189,14 +189,16 @@ subdir-pixman: pixman/Makefile
 	$(call quiet-command,$(MAKE) $(SUBDIR_MAKEFLAGS) -C pixman V="$(V)" all,)
 
 pixman/Makefile: $(SRC_PATH)/pixman/configure
-	(cd pixman; CFLAGS="$(CFLAGS) -fPIC $(extra_cflags) $(extra_ldflags)" $(SRC_PATH)/pixman/configure $(AUTOCONF_HOST) --disable-gtk --disable-shared --enable-static)
+	(cd pixman; CFLAGS="$(CFLAGS)  $(extra_cflags) $(extra_ldflags)" $(SRC_PATH)/pixman/configure $(AUTOCONF_HOST) --disable-gtk --disable-shared --enable-static)
 
 $(SRC_PATH)/pixman/configure:
 	(cd $(SRC_PATH)/pixman; autoreconf -v --install)
 
 DTC_MAKE_ARGS=-I$(SRC_PATH)/dtc VPATH=$(SRC_PATH)/dtc -C dtc V="$(V)" LIBFDT_srcdir=$(SRC_PATH)/dtc/libfdt
 DTC_CFLAGS=$(CFLAGS) $(QEMU_CFLAGS)
-DTC_CPPFLAGS=-I$(BUILD_DIR)/dtc -I$(SRC_PATH)/dtc -I$(SRC_PATH)/dtc/libfdt
+DTC_BUILD_DIR=$(shell cygpath -w $(CURDIR))
+DTC_SRC_PATH=$(shell cygpath -w $(SRC_PATH))
+DTC_CPPFLAGS=-I$(DTC_BUILD_DIR)/dtc -I$(DTC_SRC_PATH)/dtc -I$(DTC_SRC_PATH)/dtc/libfdt
 
 subdir-dtc:dtc/libfdt dtc/tests
 	$(call quiet-command,$(MAKE) $(DTC_MAKE_ARGS) CPPFLAGS="$(DTC_CPPFLAGS)" CFLAGS="$(DTC_CFLAGS)" LDFLAGS="$(LDFLAGS)" ARFLAGS="$(ARFLAGS)" CC="$(CC)" AR="$(AR)" LD="$(LD)" $(SUBDIR_MAKEFLAGS) libfdt/libfdt.a,)
@@ -228,7 +230,7 @@ libqemustub.a: $(stub-obj-y)
 libqemuutil.a: $(util-obj-y)
 
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL
-util/module.o-cflags = -D'CONFIG_BLOCK_MODULES=$(block-modules)'
+util/module.o-cflags = -DCONFIG_BLOCK_MODULES=$(block-modules)
 
 ######################################################################
 
@@ -630,11 +632,13 @@ endif # SIGNCODE
 	makensis $(nsisflags) \
                 $(if $(BUILD_DOCS),-DCONFIG_DOCUMENTATION="y") \
                 $(if $(CONFIG_GTK),-DCONFIG_GTK="y") \
-                -DBINDIR="${INSTDIR}" \
+		-DBINDIR=`cygpath -w "${INSTDIR}"` \
+		-DCONFSUFFIX="/Bios" \
                 $(if $(DLL_PATH),-DDLLDIR="$(DLL_PATH)") \
-                -DSRCDIR="$(SRC_PATH)" \
-                -DOUTFILE="$(INSTALLER)" \
+		-DSRCDIR=`cygpath -w "$(SRC_PATH)"` \
+		-DOUTFILE=`cygpath -w "$(INSTALLER)"` \
                 -DDISPLAYVERSION="$(VERSION)" \
+		`cygpath -w $(SRC_PATH)/qemu.nsi`
                 $(SRC_PATH)/qemu.nsi
 	rm -r ${INSTDIR}
 ifdef SIGNCODE

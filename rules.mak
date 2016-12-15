@@ -18,6 +18,7 @@ QEMU_CXXFLAGS = -D__STDC_LIMIT_MACROS $(filter-out -Wstrict-prototypes -Wmissing
 
 # Flags for dependency generation
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
+QEMU_DGFLAGS = 
 
 # Same as -I$(SRC_PATH) -I., but for the nested source/object directories
 QEMU_INCLUDES += -I$(<D) -I$(@D)
